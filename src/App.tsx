@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import DashboardLayout from './layouts/DashboardLayout';
 import TicketManager from './pages/TicketManager';
 import StationManager from './pages/StationManager';
+import LineManager from './pages/LineManager';
 import PromotionManager from './pages/PromotionManager'; // Import trang mới
 import Statistics from './pages/Statistics'; // Import trang mới
 import Settings from './pages/Settings';
@@ -37,7 +38,7 @@ function App() {
           <Route index element={<Dashboard />} />
 
           {/* Các trang con (Vĩ sẽ làm sau) */}
-          <Route path="lines" element={<div>🚧 Trang Quản lý Tuyến (Đang xây dựng)</div>} />
+          <Route path="lines" element={<LineManager />} />
           <Route path="tickets" element={<TicketManager />} />
           <Route path="statistics" element={<Statistics />} />   {/* Trang thống kê */}
           <Route path="promotions" element={<PromotionManager />} /> {/* Trang khuyến mãi */}
