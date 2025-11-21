@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import enUS from 'antd/locale/en_US';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +60,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         }}
       >
-        {children}
+        <AntdApp>
+          {children}
+        </AntdApp>
       </ConfigProvider>
     </ThemeContext.Provider>
   );

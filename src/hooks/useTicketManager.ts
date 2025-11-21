@@ -13,7 +13,7 @@ export const useTicketManager = () => {
   // Form 2: Sửa gói vé (MỚI)
   const [productForm] = Form.useForm();
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-  const [ setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   // 1. Hàm lấy dữ liệu
   const fetchData = useCallback(async () => {
