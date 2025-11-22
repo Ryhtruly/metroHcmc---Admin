@@ -108,7 +108,18 @@ const Login: React.FC = () => {
                 <Form.Item name="remember" valuePropName="checked" noStyle>
                   <Checkbox>Ghi nhớ tôi</Checkbox>
                 </Form.Item>
-                <a href="#" className="hover-link" style={{ fontWeight: 600, fontFamily: "'Inter', sans-serif", color: '#003eb3' }}>Quên mật khẩu?</a>
+                <a
+                  onClick={() => navigate('/forgot-password')}
+                  className="hover-link"
+                  style={{ 
+                    fontWeight: 600, 
+                    fontFamily: "'Inter', sans-serif", 
+                    color: '#003eb3',
+                    cursor: 'pointer' 
+                  }}
+                  >
+                  Quên mật khẩu?
+                </a>
               </div>
 
               <Form.Item>
