@@ -36,7 +36,6 @@ function App() {
           <Route index element={<Dashboard />} />
 
           {/* Các trang con (Vĩ sẽ làm sau) */}
-          <Route path="lines" element={<div>🚧 Trang Quản lý Tuyến (Đang xây dựng)</div>} />
           <Route path="stations" element={<div>🚧 Trang Quản lý Ga (Đang xây dựng)</div>} />
           <Route path="tickets" element={<TicketManager />} />
           <Route path="statistics" element={<Statistics />} />   {/* Trang thống kê */}
