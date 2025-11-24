@@ -59,7 +59,6 @@ export const useSettings = () => {
       const payload = {
         title: values.title,
         content_md: values.content,
-        // Nếu type là 'system' thì có thể format tiêu đề khác, ở đây giữ nguyên
         visible_from: dayjs().toISOString(),
         is_active: true
       };
@@ -70,7 +69,11 @@ export const useSettings = () => {
         message.success('Đăng thông báo thành công!');
         setIsModalOpen(false);
         annForm.resetFields();
-        fetchData(); // Reload lại danh sách
+        fetchData(); // Reload lại danh sách ở trang hiện tại
+
+        // 👇 QUAN TRỌNG: Bắn sự kiện để cái chuông ở Header biết mà cập nhật
+        window.dispatchEvent(new Event('NEW_ANNOUNCEMENT_ADDED')); 
+        
       } else {
         message.error('Lỗi: ' + res.message);
       }
