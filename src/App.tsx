@@ -10,6 +10,8 @@ import PromotionManager from './pages/PromotionManager'; // Import trang mới
 import Statistics from './pages/Statistics'; // Import trang mới
 import Settings from './pages/Settings';
 import Appearance from './pages/Appearance';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Component bảo vệ: Kiểm tra token
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -24,6 +26,11 @@ function App() {
       <Routes>
         {/* 1. Route Công khai */}
         <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+
+        {/* Trang reset cần token */}
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         {/* 2. Route Bảo mật (Cần đăng nhập) */}
         <Route
