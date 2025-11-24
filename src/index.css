@@ -123,3 +123,22 @@ input:-webkit-autofill:active {
     
     background-color: transparent !important;
 }
+
+.leaflet-tooltip.station-label {
+  background-color: transparent; /* Nền trong suốt */
+  border: none;                  /* Bỏ viền */
+  box-shadow: none;              /* Bỏ bóng đổ */
+  font-weight: bold;             /* Chữ đậm */
+  font-size: 12px;
+  color: #003eb3;                /* Màu chữ xanh Metro (hoặc #333 tùy bạn) */
+  text-shadow: 
+    -1px -1px 0 #fff,  
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff;        /* Tạo viền trắng quanh chữ để dễ đọc trên nền bản đồ */
+}
+
+/* Ẩn mũi tên tam giác của tooltip */
+.leaflet-tooltip-bottom:before {
+  display: none;
+}
