@@ -134,6 +134,7 @@ const DashboardLayout: React.FC = () => {
     { type: 'divider' },
     { key: '/settings', icon: <SettingOutlined />, label: t('settings_log'), onClick: () => navigate('/settings') },
     { key: '/appearance', icon: <BgColorsOutlined />, label: t('appearance'), onClick: () => navigate('/appearance') },
+    { key: '/giftcodes', icon: <GiftOutlined />, label: 'Giftcode', onClick: () => navigate('/giftcodes') },
   ];
 
   return (

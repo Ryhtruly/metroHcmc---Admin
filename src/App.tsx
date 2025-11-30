@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { App as AntApp } from 'antd'; // import thêm mới hiện được :"(((("
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DashboardLayout from './layouts/DashboardLayout';
@@ -10,6 +11,8 @@ import Settings from './pages/Settings';
 import Appearance from './pages/Appearance';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword'; // THÊM TRANG RESET
+import GiftcodeManager from "./pages/GiftcodeManager"; // THÊM TRANG GIFTCODEMANAGER
+
 
 // Component bảo vệ
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,41 +22,44 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <AntApp>
+      <BrowserRouter>
+        <Routes>
 
-        {/* 🔹 PUBLIC ROUTES – không cần đăng nhập */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* 🔹 PUBLIC ROUTES – không cần đăng nhập */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Trang reset cần token */}
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+          {/* Trang reset cần token */}
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-        {/* 🔹 PROTECTED ROUTES – cần token */}
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <DashboardLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index element={<Dashboard />} />
+          {/* 🔹 PROTECTED ROUTES – cần token */}
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <DashboardLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
 
-          <Route path="lines" element={<div>🚧 Trang Quản lý Tuyến (Đang xây dựng)</div>} />
-          <Route path="stations" element={<div>🚧 Trang Quản lý Ga (Đang xây dựng)</div>} />
-          <Route path="tickets" element={<TicketManager />} />
-          <Route path="statistics" element={<Statistics />} />
-          <Route path="promotions" element={<PromotionManager />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="appearance" element={<Appearance />} />
-        </Route>
+            <Route path="lines" element={<div>🚧 Trang Quản lý Tuyến (Đang xây dựng)</div>} />
+            <Route path="stations" element={<div>🚧 Trang Quản lý Ga (Đang xây dựng)</div>} />
+            <Route path="tickets" element={<TicketManager />} />
+            <Route path="statistics" element={<Statistics />} />
+            <Route path="promotions" element={<PromotionManager />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="appearance" element={<Appearance />} />
+            <Route path="giftcodes" element={<GiftcodeManager />} />
+          </Route>
 
-        {/* 🔹 ROUTE KHÔNG TÌM THẤY */}
-        <Route path="*" element={<Navigate to="/login" />} />
+          {/* 🔹 ROUTE KHÔNG TÌM THẤY */}
+          <Route path="*" element={<Navigate to="/login" />} />
 
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AntApp>
   );
 }
 
