@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
             }}
           >
             <Statistic
-              title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Doanh thu tháng này</span>}
+              title={<span style={{ color: 'rgba(255,255,255,0.8)' }}>Doanh thu hôm nay</span>}
               value={stats.revenue}
               precision={0}
               valueStyle={{ color: '#fff', fontSize: 28, fontWeight: 'bold' }}

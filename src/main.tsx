@@ -5,6 +5,7 @@ import 'antd/dist/reset.css';
 import './i18n/i18n';
 import { ThemeProvider } from './contexts/ThemeContext'; 
 import { App as AntdApp } from 'antd'; // 👈 THÊM DÒNG NÀY
+import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

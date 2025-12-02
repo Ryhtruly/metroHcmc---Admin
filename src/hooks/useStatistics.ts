@@ -29,7 +29,7 @@ export const useStatistics = () => {
       // Gọi 3 API cùng lúc (Doanh thu, Traffic, và Loại vé)
       const [resSales, resTraffic, resTypes]: any = await Promise.all([
         axiosClient.get(`/admin/report/sales?from_date=${from}&to_date=${to}`),
-        axiosClient.get(`/admin/report/traffic?on_date=${dayjs().format('YYYY-MM-DD')}`),
+        axiosClient.get(`/admin/report/traffic?from_date=${from}&to_date=${to}`),
         axiosClient.get(`/admin/report/ticket-types?from_date=${from}&to_date=${to}`) // <-- API MỚI
       ]);
 

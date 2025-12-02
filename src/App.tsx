@@ -1,20 +1,28 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { App as AntApp } from 'antd'; // import thêm mới hiện được :"(((("
+import { App as AntApp } from 'antd'; // import Ant Design App
+
+// 1. IMPORT CÁC COMPONENT (Đã loại bỏ trùng lặp)
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DashboardLayout from './layouts/DashboardLayout';
+
+// Quản lý
 import TicketManager from './pages/TicketManager';
+import StationManager from './pages/StationManager';
+import LineManager from './pages/LineManager';
 import PromotionManager from './pages/PromotionManager';
+import GiftcodeManager from "./pages/GiftcodeManager";
+
+// Khác
 import Statistics from './pages/Statistics';
 import Settings from './pages/Settings';
 import Appearance from './pages/Appearance';
 import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword'; // THÊM TRANG RESET
-import GiftcodeManager from "./pages/GiftcodeManager"; // THÊM TRANG GIFTCODEMANAGER
+import ResetPassword from './pages/ResetPassword';
 
 
-// Component bảo vệ
+// Component bảo vệ: Kiểm tra token
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('admin_token');
   return token ? <>{children}</> : <Navigate to="/login" replace />;
@@ -22,18 +30,19 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 function App() {
   return (
+    // <AntApp> phải bọc ngoài cùng để cung cấp Context cho các hook như message/notification
     <AntApp>
       <BrowserRouter>
         <Routes>
-
-          {/* 🔹 PUBLIC ROUTES – không cần đăng nhập */}
+          
+          {/* 🔹 1. PUBLIC ROUTES (Không cần đăng nhập) */}
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-
-          {/* Trang reset cần token */}
+          {/* Trang reset cần token (từ email), không cần token admin */}
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-          {/* 🔹 PROTECTED ROUTES – cần token */}
+          
+          {/* 🔹 2. PROTECTED ROUTES (Cần token admin) */}
           <Route
             path="/"
             element={
@@ -42,20 +51,25 @@ function App() {
               </PrivateRoute>
             }
           >
+            {/* Trang chủ (Dashboard) */}
             <Route index element={<Dashboard />} />
 
-            <Route path="lines" element={<div>🚧 Trang Quản lý Tuyến (Đang xây dựng)</div>} />
-            <Route path="stations" element={<div>🚧 Trang Quản lý Ga (Đang xây dựng)</div>} />
+            {/* Các trang Quản lý */}
+            <Route path="lines" element={<LineManager />} />
+            <Route path="stations" element={<StationManager />} />
             <Route path="tickets" element={<TicketManager />} />
-            <Route path="statistics" element={<Statistics />} />
             <Route path="promotions" element={<PromotionManager />} />
+            <Route path="giftcodes" element={<GiftcodeManager />} />
+            
+            {/* Các trang Cài đặt / Thống kê */}
+            <Route path="statistics" element={<Statistics />} />
             <Route path="settings" element={<Settings />} />
             <Route path="appearance" element={<Appearance />} />
-            <Route path="giftcodes" element={<GiftcodeManager />} />
+            
           </Route>
 
-          {/* 🔹 ROUTE KHÔNG TÌM THẤY */}
-          <Route path="*" element={<Navigate to="/login" />} />
+          {/* 🔹 3. ROUTE KHÔNG TÌM THẤY (Mọi đường dẫn không khớp sẽ chuyển về Dashboard/Login) */}
+          <Route path="*" element={<Navigate to="/" />} />
 
         </Routes>
       </BrowserRouter>

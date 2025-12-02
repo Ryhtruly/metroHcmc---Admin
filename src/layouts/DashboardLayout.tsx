@@ -5,7 +5,7 @@ import {
 import { 
   DashboardOutlined, BarChartOutlined, EnvironmentOutlined, LogoutOutlined,
   QrcodeOutlined, SettingOutlined, GiftOutlined, BellOutlined, NotificationOutlined,
-  BgColorsOutlined, InfoCircleOutlined, ClockCircleOutlined
+  BgColorsOutlined, InfoCircleOutlined, ClockCircleOutlined, CheckOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -31,14 +31,16 @@ const DashboardLayout: React.FC = () => {
   const { t } = useTranslation();      
   const { token: {  borderRadiusLG } } = theme.useToken();
 
-  // Data & Logic
-  const { notifications, loading, refetch } = useNotifications();
+  // Data & Logic từ Hook mới
+  const { 
+    notifications, unreadCount, loading, refetch, markAsRead, markAllAsRead 
+  } = useNotifications();
   
   // State Modal Chi tiết
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnn, setSelectedAnn] = useState<any>(null);
 
-  // 👇 STATE MỚI: Kiểm soát việc đóng/mở danh sách thông báo
+  // State đóng mở Popover
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const handleLogout = () => {
@@ -46,14 +48,14 @@ const DashboardLayout: React.FC = () => {
     navigate('/login');
   };
 
-  // Hàm mở Modal xem chi tiết
+  // Hàm mở Modal xem chi tiết & Đánh dấu đã đọc
   const handleViewDetail = (item: any) => {
+    markAsRead(item.ann_id); // <--- Đánh dấu đã đọc ngay khi xem
     setSelectedAnn(item);
     setIsModalOpen(true);
-    setIsPopoverOpen(false); // 👈 ĐÓNG DANH SÁCH THÔNG BÁO NGAY LẬP TỨC
+    setIsPopoverOpen(false);
   };
 
-  // Hàm xử lý khi bấm vào cái chuông
   const handleOpenChange = (newOpen: boolean) => {
     setIsPopoverOpen(newOpen);
   };
@@ -68,11 +70,26 @@ const DashboardLayout: React.FC = () => {
     return { color: '#1890ff', icon: <NotificationOutlined /> }; 
   };
 
+  // Nội dung Popover Thông báo
   const notificationContent = (
     <div style={{ width: 320 }}>
-      <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontWeight: 'bold' }}>Thông báo mới ({notifications.length})</span>
-        <Button type="link" size="small" onClick={refetch} loading={loading}>Làm mới</Button>
+      <div style={{ 
+        padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8, 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+      }}>
+        <span style={{ fontWeight: 'bold' }}>Thông báo mới ({unreadCount})</span>
+        
+        <div style={{ display: 'flex', gap: 8 }}>
+          {unreadCount > 0 && (
+            <Button 
+              type="link" size="small" icon={<CheckOutlined />} 
+              onClick={markAllAsRead}
+            >
+              Đọc hết
+            </Button>
+          )}
+          <Button type="link" size="small" onClick={refetch} loading={loading}>Làm mới</Button>
+        </div>
       </div>
       
       <List
@@ -82,15 +99,31 @@ const DashboardLayout: React.FC = () => {
         locale={{ emptyText: 'Không có thông báo mới' }}
         renderItem={(item) => {
           const typeInfo = getAnnType(item.title);
+          const isRead = item.isRead; // Lấy trạng thái đã đọc
+
           return (
             <List.Item 
-              style={{ padding: '12px 8px', cursor: 'pointer', transition: 'background 0.2s' }}
+              style={{ 
+                padding: '12px 8px', cursor: 'pointer', transition: 'background 0.2s',
+                // Style khác biệt giữa Đã đọc và Chưa đọc
+                backgroundColor: isRead ? 'transparent' : '#f0f7ff',
+                opacity: isRead ? 0.6 : 1
+              }}
               className="notification-item"
               onClick={() => handleViewDetail(item)}
             >
               <List.Item.Meta
-                avatar={<Avatar style={{ backgroundColor: typeInfo.color }} icon={typeInfo.icon} />}
-                title={<Text style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</Text>}
+                avatar={
+                  // Nếu chưa đọc thì hiện chấm đỏ trên avatar
+                  <Badge dot={!isRead} offset={[-2, 2]} color="red">
+                    <Avatar style={{ backgroundColor: typeInfo.color }} icon={typeInfo.icon} />
+                  </Badge>
+                }
+                title={
+                  <Text style={{ fontSize: 13, fontWeight: isRead ? 400 : 700 }}>
+                    {item.title}
+                  </Text>
+                }
                 description={
                   <div style={{ fontSize: 11, color: '#888' }}>
                     <div style={{ marginBottom: 4, maxHeight: 32, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
@@ -109,7 +142,7 @@ const DashboardLayout: React.FC = () => {
         type="link" block size="small" style={{ marginTop: 8 }} 
         onClick={() => {
             navigate('/settings');
-            setIsPopoverOpen(false); // 👈 ĐÓNG POPOVER KHI BẤM XEM TẤT CẢ
+            setIsPopoverOpen(false);
         }}
       >
         Quản lý tất cả thông báo
@@ -161,16 +194,16 @@ const DashboardLayout: React.FC = () => {
             display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16 
         }}>
           
-          {/* 👇 SỬA Ở ĐÂY: Thêm open và onOpenChange */}
           <Popover 
             content={notificationContent} 
             trigger="click" 
             placement="bottomRight" 
             arrow={false}
-            open={isPopoverOpen} // Kiểm soát mở/đóng bằng biến state
-            onOpenChange={handleOpenChange} // Hàm xử lý khi click
+            open={isPopoverOpen}
+            onOpenChange={handleOpenChange}
           >
-            <Badge count={notifications.length} size="small" style={{ cursor: 'pointer' }}>
+            {/* Chỉ hiển thị số lượng CHƯA ĐỌC */}
+            <Badge count={unreadCount} size="small" style={{ cursor: 'pointer' }}>
               <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 20 }} />} />
             </Badge>
           </Popover>
