@@ -10,7 +10,6 @@ import dayjs from 'dayjs';
 const { Option } = Select;
 
 // --- 1. INTERFACE CHO DỮ LIỆU GIFTCODE TỪ API/DB ---
-// Dựa trên cấu trúc cột từ hình ảnh bạn gửi
 interface Giftcode {
   promo_id: string; 
   code: string;
@@ -18,20 +17,20 @@ interface Giftcode {
   ticket_type_id: number | null;
   discount_amount: number | null;
   discount_percent: number | null;
-  max_usage: number; // Thêm trường này để hiển thị số lượng tối đa
+  max_usage: number; 
   used_count: number;
   is_active: boolean;
   expires_at: string | null;
-  start_at: string | null;
+  // SỬA: Đồng bộ với Backend, sử dụng 'starts_at'
+  starts_at: string | null; 
   
-  // Các thuộc tính bổ sung được tính toán trong code
+  // Các thuộc tính bổ sung được tính toán trong code hoặc lấy từ Backend
   reward_value: string;
   status: string;
 }
 
 const GiftcodeManager: React.FC = () => {
   const { message } = App.useApp();
-  // Khai báo kiểu dữ liệu cho state codes
   const [codes, setCodes] = useState<Giftcode[]>([]); 
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +44,7 @@ const GiftcodeManager: React.FC = () => {
     try {
       const res = await axiosClient.get('/admin/giftcodes');
 
-      // BACKEND TRẢ ARRAY → dùng trực tiếp
+      // Backend trả về { ok: true, data: [...] } hoặc trực tiếp array (tùy cấu hình)
       const raw = Array.isArray(res.data)
         ? res.data
         : res.data?.data || [];
@@ -54,6 +53,8 @@ const GiftcodeManager: React.FC = () => {
       const transformed: Giftcode[] = raw.map((item: Giftcode) => { 
         
         // 1. Tính giá trị (reward_value)
+        // LƯU Ý: Nếu Backend đã tính toán trường 'reward_value' (như trong hàm SQL),
+        // bạn có thể BỎ QUA logic này và dùng trực tiếp item.reward_value
         const reward_value =
           item.reward_type === "TICKET"
             ? `Vé ID ${item.ticket_type_id}`
@@ -64,12 +65,16 @@ const GiftcodeManager: React.FC = () => {
             : "N/A";
 
         // 2. Tính trạng thái real–time (status)
+        // LƯU Ý: Nếu Backend đã tính toán trường 'computed_status' (như trong hàm SQL),
+        // bạn có thể BỎ QUA logic này và mapping từ computed_status sang tiếng Việt.
         let status = "Đang chạy"; // Giả định mặc định là đang chạy
         const now = dayjs();
 
         if (!item.is_active) {
             status = "Đã tắt";
-        } else if (item.start_at && now.isBefore(dayjs(item.start_at))) {
+        } 
+        // SỬA: Thay item.start_at bằng item.starts_at
+        else if (item.starts_at && now.isBefore(dayjs(item.starts_at))) {
           status = "Chưa tới ngày";
         } else if (item.expires_at && now.isAfter(dayjs(item.expires_at))) {
           status = "Hết hạn";
@@ -118,7 +123,7 @@ const GiftcodeManager: React.FC = () => {
       dataIndex: 'reward_value'
     },
     {
-      title: 'Đã dùng / SL Tối đa', // <--- Cập nhật để hiển thị số lượng
+      title: 'Đã dùng / SL Tối đa', 
       dataIndex: 'used_count',
       render: (used_count: number, record: Giftcode) => (
         `${used_count} / ${record.max_usage}`
@@ -127,7 +132,8 @@ const GiftcodeManager: React.FC = () => {
     },
     {
       title: 'Ngày bắt đầu',
-      dataIndex: 'start_at',
+      // SỬA: dataIndex là 'starts_at'
+      dataIndex: 'starts_at', 
       render: (t: string) =>
         t ? dayjs(t).format('DD/MM/YY HH:mm') : 'Không'
     },
@@ -167,10 +173,10 @@ const GiftcodeManager: React.FC = () => {
         ticket_type_id: values.ticket_type_id ?? null,
         discount_amount: values.discount_amount ?? null,
         discount_percent: values.discount_percent ?? null,
-        // Chuyển đổi DatePicker dayjs object sang ISO string
-        start_at: values.start_at ? values.start_at.toISOString() : null,
+        // SỬA: Thay values.start_at bằng values.starts_at
+        starts_at: values.starts_at ? values.starts_at.toISOString() : null,
         expires_at: values.expires_at ? values.expires_at.toISOString() : null,
-        max_usage: values.max_usage // Lấy trường max_usage từ form
+        max_usage: values.max_usage
       };
 
       const res = await axiosClient.post('/admin/giftcodes/batch', payload);
@@ -230,7 +236,7 @@ const GiftcodeManager: React.FC = () => {
         onCancel={() => setIsModalOpen(false)}
         onOk={handleCreate}
         okText="Tạo mã"
-        confirmLoading={loading} // Sử dụng trạng thái loading khi đang tạo
+        confirmLoading={loading}
       >
         <Form layout="vertical" form={form} initialValues={{ quantity: 1, max_usage: 1 }}>
 
@@ -296,7 +302,8 @@ const GiftcodeManager: React.FC = () => {
             }}
           </Form.Item>
 
-          <Form.Item label="Ngày bắt đầu" name="start_at">
+          {/* SỬA: name của Form.Item là 'starts_at' */}
+          <Form.Item label="Ngày bắt đầu" name="starts_at">
             <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm:ss" />
           </Form.Item>
 
