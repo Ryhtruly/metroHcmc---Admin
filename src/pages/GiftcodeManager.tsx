@@ -1,94 +1,96 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Modal, Form, Input, InputNumber,
-  Select, DatePicker, App
+  Select, DatePicker, App, Switch, Tooltip, Row, Col, Space
 } from 'antd';
-import { PlusOutlined, GiftOutlined } from '@ant-design/icons';
-import axiosClient from '../api/axiosClient'; // Đảm bảo đường dẫn này đúng
+import { PlusOutlined, GiftOutlined, QuestionCircleOutlined, EditOutlined, CheckCircleOutlined, StopOutlined } from '@ant-design/icons';
+import axiosClient from '../api/axiosClient';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
 
 // --- 1. INTERFACE CHO DỮ LIỆU GIFTCODE TỪ API/DB ---
 interface Giftcode {
-  promo_id: string; 
+  promo_id: string;
   code: string;
-  reward_type: 'TICKET' | 'DISCOUNT_AMOUNT' | 'DISCOUNT_PERCENT' | string;
-  ticket_type_id: number | null;
+  reward_type: string;
+  ticket_product_id: number | null;
   discount_amount: number | null;
   discount_percent: number | null;
-  max_usage: number; 
+  max_usage: number;
   used_count: number;
   is_active: boolean;
   expires_at: string | null;
-  // SỬA: Đồng bộ với Backend, sử dụng 'starts_at'
-  starts_at: string | null; 
-  
-  // Các thuộc tính bổ sung được tính toán trong code hoặc lấy từ Backend
+  starts_at: string | null;
+
+  // Client-side transformed properties
   reward_value: string;
   status: string;
+  ticket_name_vi?: string;
+}
+
+interface TicketProduct {
+  id: number;
+  code: string;
+  name_vi: string;
+  type: string;
 }
 
 const GiftcodeManager: React.FC = () => {
-  const { message } = App.useApp();
-  const [codes, setCodes] = useState<Giftcode[]>([]); 
+  const { message, modal } = App.useApp();
+  const [codes, setCodes] = useState<Giftcode[]>([]);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [form] = Form.useForm();
+  const [ticketProducts, setTicketProducts] = useState<TicketProduct[]>([]);
 
   // =========================
-  // GET LIST GIFTCODE
+  // FETCH DATA & LOGIC
   // =========================
+
+  const fetchTicketProducts = async () => {
+    try {
+      const res = await axiosClient.get('/admin/ticket-products');
+      const products = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setTicketProducts(products);
+    } catch (err) {
+      console.error("Lỗi tải sản phẩm vé:", err);
+      message.error("Không thể tải danh sách sản phẩm vé!");
+    }
+  };
+
   const fetchCodes = async () => {
     setLoading(true);
     try {
       const res = await axiosClient.get('/admin/giftcodes');
+      const raw = Array.isArray(res.data) ? res.data : res.data?.data || [];
 
-      // Backend trả về { ok: true, data: [...] } hoặc trực tiếp array (tùy cấu hình)
-      const raw = Array.isArray(res.data)
-        ? res.data
-        : res.data?.data || [];
-
-      // Add reward_value + status. Khai báo kiểu cho item: Giftcode
-      const transformed: Giftcode[] = raw.map((item: Giftcode) => { 
-        
-        // 1. Tính giá trị (reward_value)
-        // LƯU Ý: Nếu Backend đã tính toán trường 'reward_value' (như trong hàm SQL),
-        // bạn có thể BỎ QUA logic này và dùng trực tiếp item.reward_value
-        const reward_value =
-          item.reward_type === "TICKET"
-            ? `Vé ID ${item.ticket_type_id}`
-            : item.reward_type === "DISCOUNT_AMOUNT"
-            ? `${item.discount_amount?.toLocaleString()} ₫`
-            : item.reward_type === "DISCOUNT_PERCENT"
-            ? `${item.discount_percent}%`
-            : "N/A";
-
-        // 2. Tính trạng thái real–time (status)
-        // LƯU Ý: Nếu Backend đã tính toán trường 'computed_status' (như trong hàm SQL),
-        // bạn có thể BỎ QUA logic này và mapping từ computed_status sang tiếng Việt.
-        let status = "Đang chạy"; // Giả định mặc định là đang chạy
+      const transformed: Giftcode[] = raw.map((item: any) => {
+        let status = "Đã tắt";
         const now = dayjs();
 
-        if (!item.is_active) {
-            status = "Đã tắt";
-        } 
-        // SỬA: Thay item.start_at bằng item.starts_at
-        else if (item.starts_at && now.isBefore(dayjs(item.starts_at))) {
-          status = "Chưa tới ngày";
-        } else if (item.expires_at && now.isAfter(dayjs(item.expires_at))) {
-          status = "Hết hạn";
-        } else if (item.used_count >= item.max_usage) {
-          status = "Hết lượt";
-        } 
+        if (item.is_active) {
+            if (item.starts_at && now.isBefore(dayjs(item.starts_at))) {
+                status = "Chưa tới ngày";
+            } else if (item.expires_at && now.isAfter(dayjs(item.expires_at))) {
+                status = "Hết hạn";
+            } else if (item.used_count >= item.max_usage) {
+                status = "Hết lượt";
+            } else {
+                status = "Đang chạy";
+            }
+        }
         
-        // Trả về đối tượng Giftcode đã được thêm 2 trường mới
+        const reward_value = item.reward_value || '';
+
         return { ...item, reward_value, status };
       });
 
       setCodes(transformed);
 
     } catch (err) {
+      console.error("Lỗi tải Giftcode:", err);
       message.error("Không thể tải danh sách giftcode!");
     }
     setLoading(false);
@@ -96,224 +98,272 @@ const GiftcodeManager: React.FC = () => {
 
   useEffect(() => {
     fetchCodes();
+    fetchTicketProducts();
   }, []);
 
-  // =========================
-  // TABLE COLUMNS
-  // =========================
+  const openModal = (record?: Giftcode) => {
+    if (record) {
+      setIsEditMode(true);
+      form.setFieldsValue({
+        ...record,
+        starts_at: record.starts_at ? dayjs(record.starts_at) : null,
+        ticket_product_code: record.reward_value,
+      });
+    } else {
+      setIsEditMode(false);
+      form.resetFields();
+      form.setFieldsValue({ quantity: 1, max_usage: 1, is_active: true });
+    }
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setIsEditMode(false);
+    form.resetFields();
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const values = await form.validateFields();
+      console.log('Form Values:', values); // Kiểm tra giá trị đã nhập
+
+      let res;
+
+      if (isEditMode) {
+        const payload = {
+          max_usage: values.max_usage,
+          ticket_product_code: values.ticket_product_code,
+          starts_at: values.starts_at ? values.starts_at.toISOString() : null,
+          is_active: values.is_active,
+        };
+        console.log('Payload for Edit:', payload);  // Debug payload khi chỉnh sửa
+        res = await axiosClient.put(`/admin/giftcodes/${values.promo_id}`, payload);
+      } else {
+        const payload = {
+          prefix: values.code,
+          quantity: values.quantity,
+          max_usage: values.max_usage,
+          ticket_product_code: values.ticket_product_code,
+          starts_at: values.starts_at ? values.starts_at.toISOString() : new Date().toISOString(), // Nếu không có ngày, dùng ngày hiện tại
+          is_active: true,
+        };
+        console.log('Payload for New Giftcode:', payload);  // Debug payload khi tạo mới
+        res = await axiosClient.post('/admin/giftcodes/batch', payload);
+      }
+
+      if (res && res.data && res.data.ok) {
+        const count = res.data.data?.count || 1;
+        const successMsg = isEditMode
+          ? `Đã cập nhật mã ${values.code} thành công`
+          : `Đã tạo ${count} mã giftcode thành công`;
+        message.success(successMsg);
+        closeModal();
+        fetchCodes(); // Refresh data
+      } else {
+        message.error(res?.data?.message || (isEditMode ? "Cập nhật thất bại!" : "Tạo mới thất bại!"));
+      }
+    } catch (err: any) {
+      if (err.errorFields) return; // Antd validation error
+      console.error("Error during saving:", err); // Debug lỗi xảy ra khi lưu
+      message.error(err.response?.data?.message || "Lỗi hệ thống, vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     {
       title: 'Mã Code',
       dataIndex: 'code',
-      render: (t: string) => <Tag color="blue">{t}</Tag>
+      render: (t: string) => <Tag color="blue">{t}</Tag>,
+      width: 150,
+      sorter: (a: Giftcode, b: Giftcode) => a.code.localeCompare(b.code),
     },
     {
       title: 'Loại quà',
       dataIndex: 'reward_type',
-      render: (t: string) => {
-        const type = t.toUpperCase();
-        if (type === 'TICKET') return <Tag color="green">Tặng vé</Tag>;
-        if (type === 'DISCOUNT_AMOUNT') return <Tag color="purple">Giảm tiền</Tag>;
-        if (type === 'DISCOUNT_PERCENT') return <Tag color="cyan">Giảm %</Tag>;
-        return <Tag>{type}</Tag>;
-      }
+      render: (t: string, record: Giftcode) => {
+        const type = (t || '').toUpperCase();
+        const displayName = record.ticket_name_vi || t || 'Không xác định';
+        if (type.includes('DAY_PASS')) return <Tag color="green">{displayName}</Tag>;
+        if (type.includes('MONTHLY_PASS')) return <Tag color="purple">{displayName}</Tag>;
+        return <Tag>{displayName}</Tag>;
+      },
+      width: 150,
     },
     {
-      title: 'Giá trị',
-      dataIndex: 'reward_value'
+      title: 'Giá trị (Mã Vé)',
+      dataIndex: 'reward_value',
+      render: (t: string) => t ? <Tag color="cyan">{t}</Tag> : 'N/A',
+      width: 140,
     },
     {
-      title: 'Đã dùng / SL Tối đa', 
+      title: 'Đã dùng / Tối đa',
       dataIndex: 'used_count',
       render: (used_count: number, record: Giftcode) => (
         `${used_count} / ${record.max_usage}`
       ),
-      width: 150
+      width: 150,
+      align: 'center' as const,
     },
     {
       title: 'Ngày bắt đầu',
-      // SỬA: dataIndex là 'starts_at'
-      dataIndex: 'starts_at', 
+      dataIndex: 'starts_at',
       render: (t: string) =>
-        t ? dayjs(t).format('DD/MM/YY HH:mm') : 'Không'
+        t ? dayjs(t).format('DD/MM/YY HH:mm') : 'Áp dụng ngay',
+      width: 160,
     },
     {
-      title: 'Hết hạn',
+      title: 'Ngày hết hạn',
       dataIndex: 'expires_at',
       render: (t: string) =>
-        t ? dayjs(t).format('DD/MM/YY HH:mm') : 'Không'
+        t ? dayjs(t).format('DD/MM/YY HH:mm') : 'Không có',
+      width: 160,
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
-      render: (t: string) => {
+      width: 120,
+      render: (status: string) => {
         const color =
-          t === "Đang chạy" ? "green" :
-          t === "Chưa tới ngày" ? "blue" :
-          t === "Hết hạn" ? "red" :
-          t === "Hết lượt" ? "orange" :
+          status === "Đang chạy" ? "green" :
+          status === "Chưa tới ngày" ? "blue" :
+          status === "Hết hạn" ? "red" :
+          status === "Hết lượt" ? "orange" :
           "default";
-        return <Tag color={color}>{t}</Tag>;
+        return <Tag color={color}>{status}</Tag>;
       }
+    },
+    {
+      title: 'Hành động',
+      key: 'action',
+      width: 120,
+      align: 'center' as const,
+      fixed: 'right' as const,
+      render: (_: any, record: Giftcode) => (
+        <Space size="small">
+            <Tooltip title="Sửa">
+                <Button size="small" icon={<EditOutlined />} onClick={() => openModal(record)} />
+            </Tooltip>
+        </Space>
+      ),
     },
   ];
 
-  // =========================
-  // CREATE GIFTCODE BATCH
-  // =========================
-  const handleCreate = async () => {
-    try {
-      // Validate trước khi lấy giá trị
-      const values = await form.validateFields();
-
-      const payload = {
-        prefix: values.prefix,
-        quantity: values.quantity,
-        reward_type: values.reward_type,
-        ticket_type_id: values.ticket_type_id ?? null,
-        discount_amount: values.discount_amount ?? null,
-        discount_percent: values.discount_percent ?? null,
-        // SỬA: Thay values.start_at bằng values.starts_at
-        starts_at: values.starts_at ? values.starts_at.toISOString() : null,
-        expires_at: values.expires_at ? values.expires_at.toISOString() : null,
-        max_usage: values.max_usage
-      };
-
-      const res = await axiosClient.post('/admin/giftcodes/batch', payload);
-
-      // Giả định API trả về { ok: boolean, count: number }
-      if (res.data.ok) { 
-        message.success(`Đã tạo ${res.data.count} giftcode thành công`);
-        setIsModalOpen(false);
-        form.resetFields();
-        fetchCodes(); // Tải lại danh sách
-      } else {
-        message.error("Tạo giftcode thất bại!");
-      }
-
-    } catch (err: any) {
-      if (err.errorFields) return; // Bỏ qua nếu là lỗi validate của Antd
-      message.error(err.response?.data?.message || "Lỗi hệ thống khi tạo mã");
-    }
-  };
-
-  // =========================
-  // RENDER COMPONENT
-  // =========================
   return (
-    <div className="animate-fade-in">
+    <App>
+        <div className="animate-fade-in p-6">
+        <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-700 flex items-center">
+                <GiftOutlined className="mr-2 text-blue-500" /> Quản lý Giftcode
+            </h2>
+            <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => openModal()}
+            >
+                Tạo mã hàng loạt
+            </Button>
+        </div>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2><GiftOutlined /> Quản lý Giftcode</h2>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            form.resetFields();
-            setIsModalOpen(true);
-          }}
+        <Card className="shadow-lg rounded-lg">
+            <Table
+                columns={columns}
+                dataSource={codes}
+                rowKey="promo_id"
+                loading={loading}
+                pagination={{ pageSize: 10, showSizeChanger: true }}
+                scroll={{ x: 1300 }}
+            />
+        </Card>
+
+        <Modal
+            title={isEditMode ? "Chỉnh sửa Giftcode" : "Tạo Giftcode hàng loạt"}
+            open={isModalOpen}
+            onCancel={closeModal}
+            onOk={handleSave}
+            okText={isEditMode ? "Cập nhật" : "Tạo mã"}
+            confirmLoading={loading}
+            width={600}
+            destroyOnClose
         >
-          Tạo mã hàng loạt
-        </Button>
-      </div>
+            <Form key={isModalOpen ? "open" : "closed"} form={form} layout="vertical" name="giftcode_form">
+                {isEditMode && (
+                    <Form.Item name="promo_id" hidden><Input /></Form.Item>
+                )}
 
-      {/* TABLE */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={codes}
-          rowKey="promo_id"
-          loading={loading}
-          pagination={{ pageSize: 15 }}
-        />
-      </Card>
+                <Row gutter={16}>
+                    <Col span={isEditMode ? 24 : 12}>
+                        <Form.Item
+                            label={isEditMode ? "Mã Code" : "Prefix (vd: TET2025)"}
+                            name="code"
+                            rules={[{ required: true, message: 'Vui lòng nhập prefix' }]}
+                        >
+                            {isEditMode ? (
+                                <Input disabled />
+                            ) : (
+                                <Input placeholder="TET2025, HE2025,..." />
+                            )}
+                        </Form.Item>
+                    </Col>
 
-      {/* MODAL */}
-      <Modal
-        title="Tạo Giftcode hàng loạt"
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        onOk={handleCreate}
-        okText="Tạo mã"
-        confirmLoading={loading}
-      >
-        <Form layout="vertical" form={form} initialValues={{ quantity: 1, max_usage: 1 }}>
+                    {!isEditMode && (
+                        <Col span={12}>
+                            <Form.Item label="Số lượng tạo" name="quantity" rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}>
+                                <InputNumber min={1} max={5000} style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    )}
+                </Row>
 
-          <Form.Item label="Prefix (vd: TET2025)" name="prefix" rules={[{ required: true, message: 'Vui lòng nhập prefix' }]}>
-            <Input placeholder="TET2025" />
-          </Form.Item>
-
-          <Form.Item label="Số lượng tạo" name="quantity" rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}>
-            <InputNumber min={1} max={5000} style={{ width: '100%' }} />
-          </Form.Item>
-          
-          <Form.Item label="Số lần dùng tối đa/mã" name="max_usage" rules={[{ required: true, message: 'Vui lòng nhập số lần dùng' }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item label="Loại quà tặng" name="reward_type" rules={[{ required: true, message: 'Vui lòng chọn loại quà tặng' }]}>
-            <Select>
-              <Option value="TICKET">Tặng vé</Option>
-              <Option value="DISCOUNT_AMOUNT">Giảm tiền</Option>
-              <Option value="DISCOUNT_PERCENT">Giảm phần trăm</Option>
-            </Select>
-          </Form.Item>
-
-          {/* CONDITIONAL FIELDS */}
-          <Form.Item noStyle shouldUpdate>
-            {() => {
-              const type = form.getFieldValue('reward_type');
-
-              if (type === 'TICKET')
-                return (
-                  <Form.Item
-                    label="Ticket Type ID"
-                    name="ticket_type_id"
-                    rules={[{ required: true, message: 'Vui lòng nhập Ticket ID' }]}
-                  >
+                <Form.Item label="Số lần dùng tối đa / mã" name="max_usage" rules={[{ required: true, message: 'Vui lòng nhập số lần dùng' }]}>
                     <InputNumber min={1} style={{ width: '100%' }} />
-                  </Form.Item>
-                );
+                </Form.Item>
 
-              if (type === 'DISCOUNT_AMOUNT')
-                return (
-                  <Form.Item
-                    label="Số tiền giảm (VND)"
-                    name="discount_amount"
-                    rules={[{ required: true, message: 'Vui lòng nhập số tiền giảm' }]}
-                  >
-                    <InputNumber min={1000} style={{ width: '100%' }} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
-                  </Form.Item>
-                );
+                <Form.Item label="Loại quà tặng (Vé)" name="ticket_product_code" rules={[{ required: true, message: 'Vui lòng chọn loại vé' }]}>
+                    <Select placeholder="Chọn loại vé (Day Pass, Monthly Pass...)">
+                        {ticketProducts
+                            .filter(p => p.type !== 'single_ride') 
+                            .map(product => (
+                                <Option key={product.id} value={product.code}>
+                                    {product.name_vi} ({product.code})
+                                </Option>
+                            ))}
+                    </Select>
+                </Form.Item>
 
-              if (type === 'DISCOUNT_PERCENT')
-                return (
-                  <Form.Item
-                    label="Phần trăm giảm"
-                    name="discount_percent"
-                    rules={[{ required: true, message: 'Vui lòng nhập phần trăm giảm' }]}
-                  >
-                    <InputNumber min={1} max={100} style={{ width: '100%' }} addonAfter="%" />
-                  </Form.Item>
-                );
+                <Row gutter={16} align="bottom">
+                    <Col span={isEditMode ? 12 : 24}>
+                        <Form.Item
+                            label={
+                                <span>
+                                    Ngày bắt đầu hiệu lực &nbsp;
+                                    <Tooltip title="Ngày hết hạn sẽ được tính tự động dựa trên loại vé. Để trống nếu muốn mã có hiệu lực ngay.">
+                                        <QuestionCircleOutlined />
+                                    </Tooltip>
+                                </span>
+                            }
+                            name="starts_at"
+                            rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu!' }]}
+                        >
+                            <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm:ss" />
+                        </Form.Item>
+                    </Col>
 
-              return null;
-            }}
-          </Form.Item>
-
-          {/* SỬA: name của Form.Item là 'starts_at' */}
-          <Form.Item label="Ngày bắt đầu" name="starts_at">
-            <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm:ss" />
-          </Form.Item>
-
-          <Form.Item label="Ngày hết hạn" name="expires_at">
-            <DatePicker showTime style={{ width: '100%' }} format="DD/MM/YYYY HH:mm:ss" />
-          </Form.Item>
-
-        </Form>
-      </Modal>
-    </div>
+                    {isEditMode && (
+                        <Col span={12}>
+                            <Form.Item label="Trạng thái" name="is_active" valuePropName="checked">
+                                <Switch checkedChildren="Hoạt động" unCheckedChildren="Vô hiệu" />
+                            </Form.Item>
+                        </Col>
+                    )}
+                </Row>
+            </Form>
+        </Modal>
+        </div>
+    </App>
   );
 };
 
