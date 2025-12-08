@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { 
-  Layout, Menu, Button, theme, Badge, Popover, List, Avatar, Typography, Modal, Descriptions 
+  Layout, Menu, Button, theme, Badge, Popover, List, Avatar, Typography, Modal, Descriptions, Tag 
 } from 'antd';
 import { 
   DashboardOutlined, BarChartOutlined, EnvironmentOutlined, LogoutOutlined,
-  QrcodeOutlined, SettingOutlined, GiftOutlined, BellOutlined, NotificationOutlined,
-  BgColorsOutlined, InfoCircleOutlined, ClockCircleOutlined, CheckOutlined
+  QrcodeOutlined, SettingOutlined, GiftOutlined, BellOutlined, 
+  BgColorsOutlined, UserOutlined, ReloadOutlined, MessageOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -14,12 +14,13 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi'; 
 import IdleTimer from '../components/IdleTimer';
 
-dayjs.extend(relativeTime);
-dayjs.locale('vi'); 
-
+// Import Hook & Context
 import { useTheme } from '../contexts/ThemeContext'; 
 import { useTranslation } from 'react-i18next';     
-import { useNotifications } from '../hooks/useNotifications';
+import { useAdminFeedbacks } from '../hooks/useAdminFeedbacks'; 
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi'); 
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -29,108 +30,94 @@ const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const { siderColor, contentColor } = useTheme(); 
   const { t } = useTranslation();      
-  const { token: {  borderRadiusLG } } = theme.useToken();
+  const { token: { borderRadiusLG } } = theme.useToken();
 
-  // Data & Logic từ Hook mới
+  // Hook lấy Feedback
   const { 
-    notifications, unreadCount, loading, refetch, markAsRead, markAllAsRead 
-  } = useNotifications();
+    feedbacks, unreadCount, loading, refetch, markAsRead, markAllAsRead 
+  } = useAdminFeedbacks();
   
-  // State Modal Chi tiết
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnn, setSelectedAnn] = useState<any>(null);
-
-  // State đóng mở Popover
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  
+  // --- STATE CHO MODAL CHI TIẾT ---
+  // Lưu feedback đang được chọn để hiển thị
+  const [selectedFeedback, setSelectedFeedback] = useState<any>(null); 
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     navigate('/login');
   };
 
-  // Hàm mở Modal xem chi tiết & Đánh dấu đã đọc
-  const handleViewDetail = (item: any) => {
-    markAsRead(item.ann_id); // <--- Đánh dấu đã đọc ngay khi xem
-    setSelectedAnn(item);
-    setIsModalOpen(true);
-    setIsPopoverOpen(false);
+  // Hàm xử lý khi click vào 1 dòng feedback
+  const handleFeedbackClick = (item: any) => {
+      markAsRead(item.id); // 1. Đánh dấu đã đọc
+      setSelectedFeedback(item); // 2. Lưu item vào state để hiện Modal
+      setIsPopoverOpen(false); // 3. Đóng popover cho gọn
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setIsPopoverOpen(newOpen);
-  };
-
-  // Helper đoán màu icon
-  const getAnnType = (title: string) => {
-    const lower = title ? title.toLowerCase() : '';
-    if (lower.includes('bảo trì') || lower.includes('lỗi') || lower.includes('cảnh báo')) 
-      return { color: '#ff4d4f', icon: <InfoCircleOutlined /> }; 
-    if (lower.includes('khuyến mãi') || lower.includes('ưu đãi')) 
-      return { color: '#faad14', icon: <GiftOutlined /> }; 
-    return { color: '#1890ff', icon: <NotificationOutlined /> }; 
-  };
-
-  // Nội dung Popover Thông báo
+  // Nội dung Popover: Danh sách Góp ý
   const notificationContent = (
-    <div style={{ width: 320 }}>
+    <div style={{ width: 360 }}>
+      {/* Header Popover */}
       <div style={{ 
-        padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8, 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
+        padding: '12px 16px', borderBottom: '1px solid #f0f0f0', 
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        backgroundColor: '#fafafa'
       }}>
-        <span style={{ fontWeight: 'bold' }}>Thông báo mới ({unreadCount})</span>
-        
+        <span style={{ fontWeight: 'bold', fontSize: 15 }}>
+          <MessageOutlined style={{ marginRight: 8 }} />
+          Góp ý mới ({unreadCount})
+        </span>
         <div style={{ display: 'flex', gap: 8 }}>
-          {unreadCount > 0 && (
-            <Button 
-              type="link" size="small" icon={<CheckOutlined />} 
-              onClick={markAllAsRead}
-            >
-              Đọc hết
-            </Button>
-          )}
-          <Button type="link" size="small" onClick={refetch} loading={loading}>Làm mới</Button>
+          {unreadCount > 0 && <Button type="link" size="small" onClick={markAllAsRead}>Đọc hết</Button>}
+          <Button type="link" size="small" onClick={refetch} icon={<ReloadOutlined />} loading={loading} />
         </div>
       </div>
       
+      {/* List Góp ý */}
       <List
         itemLayout="horizontal"
-        dataSource={notifications}
+        dataSource={feedbacks}
         loading={loading}
-        locale={{ emptyText: 'Không có thông báo mới' }}
-        renderItem={(item) => {
-          const typeInfo = getAnnType(item.title);
-          const isRead = item.isRead; // Lấy trạng thái đã đọc
-
+        locale={{ emptyText: 'Chưa có góp ý nào' }}
+        style={{ maxHeight: 400, overflowY: 'auto' }}
+        renderItem={(item: any) => {
+          const isRead = item.isRead;
           return (
             <List.Item 
               style={{ 
-                padding: '12px 8px', cursor: 'pointer', transition: 'background 0.2s',
-                // Style khác biệt giữa Đã đọc và Chưa đọc
-                backgroundColor: isRead ? 'transparent' : '#f0f7ff',
-                opacity: isRead ? 0.6 : 1
+                padding: '12px 16px', cursor: 'pointer', transition: 'all 0.2s',
+                backgroundColor: isRead ? '#fff' : '#e6f7ff', // Màu xanh nhạt nếu chưa đọc
+                borderBottom: '1px solid #f0f0f0'
               }}
-              className="notification-item"
-              onClick={() => handleViewDetail(item)}
+              onClick={() => handleFeedbackClick(item)} // <--- GỌI HÀM MỞ MODAL
             >
               <List.Item.Meta
                 avatar={
-                  // Nếu chưa đọc thì hiện chấm đỏ trên avatar
-                  <Badge dot={!isRead} offset={[-2, 2]} color="red">
-                    <Avatar style={{ backgroundColor: typeInfo.color }} icon={typeInfo.icon} />
+                  <Badge dot={!isRead} offset={[-2, 2]} color="blue">
+                    <Avatar style={{ backgroundColor: isRead ? '#ccc' : '#1890ff' }} icon={<UserOutlined />} />
                   </Badge>
                 }
                 title={
-                  <Text style={{ fontSize: 13, fontWeight: isRead ? 400 : 700 }}>
-                    {item.title}
-                  </Text>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Text strong={!isRead} style={{ fontSize: 13, maxWidth: 180 }} ellipsis>
+                        {item.user_name}
+                      </Text>
+                      <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+                        {dayjs(item.created_at).fromNow()}
+                      </Text>
+                  </div>
                 }
                 description={
-                  <div style={{ fontSize: 11, color: '#888' }}>
-                    <div style={{ marginBottom: 4, maxHeight: 32, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                      {item.content_md}
+                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: 2 }}>{item.title || '(Không tiêu đề)'}</div>
+                    <div style={{ 
+                        maxHeight: 40, overflow: 'hidden', 
+                        textOverflow: 'ellipsis', display: '-webkit-box', 
+                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' 
+                    }}>
+                      {item.content}
                     </div>
-                    <ClockCircleOutlined style={{ fontSize: 10, marginRight: 4 }} />
-                    {dayjs(item.created_at).fromNow()}
                   </div>
                 }
               />
@@ -138,15 +125,6 @@ const DashboardLayout: React.FC = () => {
           );
         }}
       />
-      <Button 
-        type="link" block size="small" style={{ marginTop: 8 }} 
-        onClick={() => {
-            navigate('/settings');
-            setIsPopoverOpen(false);
-        }}
-      >
-        Quản lý tất cả thông báo
-      </Button>
     </div>
   );
 
@@ -167,7 +145,7 @@ const DashboardLayout: React.FC = () => {
     { type: 'divider' },
     { key: '/settings', icon: <SettingOutlined />, label: t('settings_log'), onClick: () => navigate('/settings') },
     { key: '/appearance', icon: <BgColorsOutlined />, label: t('appearance'), onClick: () => navigate('/appearance') },
-    { key: '/giftcodes', icon: <GiftOutlined />, label: 'Giftcode', onClick: () => navigate('/giftcodes') },
+    { key: '/giftcodes', icon: <GiftOutlined />, label: 'Quản lý Giftcode', onClick: () => navigate('/giftcodes') },
   ];
 
   return (
@@ -200,9 +178,9 @@ const DashboardLayout: React.FC = () => {
             placement="bottomRight" 
             arrow={false}
             open={isPopoverOpen}
-            onOpenChange={handleOpenChange}
+            onOpenChange={(v) => setIsPopoverOpen(v)}
+            overlayInnerStyle={{ padding: 0 }}
           >
-            {/* Chỉ hiển thị số lượng CHƯA ĐỌC */}
             <Badge count={unreadCount} size="small" style={{ cursor: 'pointer' }}>
               <Button type="text" shape="circle" icon={<BellOutlined style={{ fontSize: 20 }} />} />
             </Badge>
@@ -220,25 +198,49 @@ const DashboardLayout: React.FC = () => {
             <Outlet />
           </div>
         </Content>
-      </Layout>
 
-      {/* MODAL CHI TIẾT */}
-      <Modal
-        title="Chi tiết thông báo"
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={[<Button key="close" onClick={() => setIsModalOpen(false)}>Đóng</Button>]}
-      >
-        {selectedAnn && (
-          <Descriptions layout="vertical" bordered column={1}>
-            <Descriptions.Item label="Tiêu đề"><b>{selectedAnn.title}</b></Descriptions.Item>
-            <Descriptions.Item label="Thời gian gửi">{dayjs(selectedAnn.created_at).format('HH:mm - DD/MM/YYYY')}</Descriptions.Item>
-            <Descriptions.Item label="Nội dung">
-              <div style={{ whiteSpace: 'pre-wrap' }}>{selectedAnn.content_md}</div>
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-      </Modal>
+        {/* --- MODAL CHI TIẾT FEEDBACK (MỚI) --- */}
+        <Modal
+            title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar style={{ backgroundColor: '#1890ff' }} icon={<UserOutlined />} />
+                    <div>
+                        <div style={{ fontSize: 16 }}>{selectedFeedback?.user_name}</div>
+                        <div style={{ fontSize: 12, color: '#888', fontWeight: 'normal' }}>
+                            {selectedFeedback && dayjs(selectedFeedback.created_at).format('HH:mm - DD/MM/YYYY')}
+                        </div>
+                    </div>
+                </div>
+            }
+            open={!!selectedFeedback} // Mở khi có dữ liệu
+            onCancel={() => setSelectedFeedback(null)} // Đóng modal
+            footer={[
+                <Button key="close" type="primary" onClick={() => setSelectedFeedback(null)}>
+                    Đóng
+                </Button>
+            ]}
+            width={600}
+        >
+            {selectedFeedback && (
+                <div style={{ marginTop: 20 }}>
+                    <Descriptions column={1} bordered size="small">
+                        <Descriptions.Item label="Tiêu đề">
+                            <Text strong>{selectedFeedback.title || '(Không tiêu đề)'}</Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Số điện thoại">
+                            {selectedFeedback.user_phone || 'Không có'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Nội dung">
+                            <div style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>
+                                {selectedFeedback.content}
+                            </div>
+                        </Descriptions.Item>
+                    </Descriptions>
+                </div>
+            )}
+        </Modal>
+
+      </Layout>
     </Layout>
   );
 };
