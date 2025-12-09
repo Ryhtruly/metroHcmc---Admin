@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message, Typography, Checkbox, ConfigProvider } from 'antd';
+import { Form, Input, Button, Typography, Checkbox, ConfigProvider , App} from 'antd';
 import { MailOutlined, LockOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../api/axiosClient';
@@ -10,20 +10,21 @@ const { Title, Text } = Typography;
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
-  
+  const { message } = App.useApp();
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
       const res = await axiosClient.post<any, LoginResponse>('/auth/login', values);
+      console.log("LOGIN RESPONSE:", res);
       if (res.success && res.user.role === 'ADMIN') {
         localStorage.setItem('admin_token', res.token);
         message.success('Chào mừng Admin quay trở lại!');
         navigate('/');
       } else {
-        message.error('Bạn không có quyền truy cập Admin!');
+        message.error(res.message || 'Đăng nhập thất bại');
       }
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Đăng nhập thất bại';
+      const msg = error.response?.data?.message || 'Không thể kết nối đến máy chủ';
       message.error(msg);
     } finally {
       setLoading(false);

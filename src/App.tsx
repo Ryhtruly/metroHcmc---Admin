@@ -39,9 +39,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           {/* Trang reset cần token (từ email), không cần token admin */}
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-
-          
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* 🔹 2. PROTECTED ROUTES (Cần token admin) */}
           <Route
             path="/"
