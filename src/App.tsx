@@ -20,7 +20,7 @@ import Settings from './pages/Settings';
 import Appearance from './pages/Appearance';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-
+import CustomerManager from './pages/CustomerManager';
 
 // Component bảo vệ: Kiểm tra token
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,8 +58,8 @@ function App() {
             <Route path="tickets" element={<TicketManager />} />
             <Route path="promotions" element={<PromotionManager />} />
             <Route path="giftcodes" element={<GiftcodeManager />} />
+            <Route path="customers" element={<CustomerManager />} />
             
-            {/* Các trang Cài đặt / Thống kê */}
             <Route path="statistics" element={<Statistics />} />
             <Route path="settings" element={<Settings />} />
             <Route path="appearance" element={<Appearance />} />

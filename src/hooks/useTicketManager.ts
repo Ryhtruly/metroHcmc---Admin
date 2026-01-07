@@ -38,7 +38,14 @@ export const useTicketManager = () => {
       }
 
       if (resProducts.ok) {
-        setTicketProducts(resProducts.data);
+        // 🔥 CHỈ THÊM ĐOẠN LỌC NÀY:
+        // Lọc để chỉ lấy đúng 2 loại vé gói có trong Database Enum
+        const rawData = resProducts.data || [];
+        const filteredData = Array.isArray(rawData) 
+          ? rawData.filter((item: any) => item.type === 'day_pass' || item.type === 'monthly_pass')
+          : [];
+          
+        setTicketProducts(filteredData);
       }
 
     } catch (error) {
@@ -71,19 +78,63 @@ export const useTicketManager = () => {
     }
   };
 
-  // --- CÁC HÀM MỚI CHO MODAL SỬA VÉ ---
-
-  // Mở Modal Sửa
-  const openProductModal = (record: any) => {
-    setEditingProduct(record);
-    productForm.setFieldsValue({
-      ...record,
-      price: Number(record.price), // Chuyển string sang number để InputNumber hiểu
-      // Nếu là vé lượt thì giá = 0 hoặc null
-    });
+  const openProductModal = (record: any = null) => {
+    if (record) {
+      setEditingProduct(record);
+      productForm.setFieldsValue({
+        ...record,
+        price: record.price ? Number(record.price) : 0,
+        // Chuyển từ Giờ sang Ngày khi hiển thị
+        duration_days: record.duration_hours ? (record.duration_hours / 24) : 0,
+        id_check: true,
+      });
+    } else {
+      setEditingProduct(null);
+      productForm.resetFields();
+      productForm.setFieldsValue({
+        state: true,
+        type: 'daily_pass', // Giá trị mặc định
+        duration_days: 1,
+        auto_activate_after_days: 30,
+        id_check: false,
+      });
+    }
     setIsProductModalOpen(true);
   };
 
+  const handleSaveProduct = async () => {
+    try {
+      const values = await productForm.validateFields();
+      setLoading(true);
+
+      const payload = {
+        ...values,
+        // 🔥 Đảm bảo nhân 24 để lưu đúng số giờ vào Database
+        duration_hours: values.duration_days * 24,
+      };
+
+      // Gọi đến API (Hãy chắc chắn đường dẫn này khớp với Backend của anh)
+      const res: any = await axiosClient.post('/tickets/admin/products', payload);
+
+      // SQL của anh trả về { success, message }
+      // Controller trả về json(data)
+      if (res && (res.success || res.ok)) {
+        message.success(editingProduct ? 'Cập nhật thành công!' : 'Thêm vé gói mới thành công!');
+        closeProductModal();
+        fetchData(); // Tải lại danh sách để thấy vé mới
+      } else {
+        // Nếu Server trả về success: false
+        message.error(res?.message || 'Lưu thất bại, vui lòng kiểm tra lại');
+      }
+    } catch (error: any) {
+      // 🔥 ĐOẠN QUAN TRỌNG: Hiển thị lỗi nếu API bị lỗi (400, 404, 500...)
+      console.error("Lỗi SaveProduct:", error);
+      const errorMsg = error.response?.data?.message || error.message || 'Lỗi kết nối máy chủ';
+      message.error('Lỗi hệ thống: ' + errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
   // Đóng Modal
   const closeProductModal = () => {
     setIsProductModalOpen(false);
@@ -91,39 +142,7 @@ export const useTicketManager = () => {
     productForm.resetFields();
   };
 
-  // Lưu Gói Vé
-  const handleSaveProduct = async () => {
-    try {
-      const values = await productForm.validateFields();
-      setLoading(true);
-
-      // Chuẩn bị dữ liệu gửi đi
-      const payload = {
-        code: values.code, // Mã vé không đổi (hoặc tạo mới nếu làm tính năng thêm)
-        name_vi: values.name_vi,
-        type: values.type,
-        price: values.type === 'single_ride' ? null : values.price, // Vé lượt không có giá cố định
-        duration_hours: values.duration_hours,
-        auto_activate_after_days: values.auto_activate_after_days,
-        state: values.state
-      };
-
-      const res: any = await axiosClient.post('/admin/ticket-products', payload);
-
-      if (res.ok) {
-        message.success('Cập nhật gói vé thành công!');
-        closeProductModal();
-        fetchData(); // Reload lại bảng
-      } else {
-        message.error('Lỗi: ' + (res.message || 'Không thể lưu'));
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   return {
     loading,
     fareRules,

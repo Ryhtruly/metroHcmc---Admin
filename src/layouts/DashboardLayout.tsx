@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  Layout, Menu, Button, theme, Badge, Popover, List, Avatar, Typography, Modal, Descriptions, Tag 
+  Layout, Menu, Button, theme, Badge, Popover, List, Avatar, Typography, 
+  Modal, Descriptions, Tag, Drawer, Divider, Space, ColorPicker // 🔥 Thêm ColorPicker vào đây
 } from 'antd';
 import { 
   DashboardOutlined, BarChartOutlined, EnvironmentOutlined, LogoutOutlined,
   QrcodeOutlined, SettingOutlined, GiftOutlined, BellOutlined, 
-  BgColorsOutlined, UserOutlined, ReloadOutlined, MessageOutlined
+  BgColorsOutlined, UserOutlined, ReloadOutlined, MessageOutlined, 
+  TeamOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import type { MenuProps } from 'antd';
@@ -23,12 +25,16 @@ dayjs.extend(relativeTime);
 dayjs.locale('vi'); 
 
 const { Header, Sider, Content } = Layout;
-const { Text } = Typography;
+const { Title, Text } = Typography;
 
 const DashboardLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { siderColor, contentColor } = useTheme(); 
+  const { 
+  siderColor, setSiderColor, 
+  primaryColor, setPrimaryColor, 
+  contentColor, setContentColor // 🔥 Thêm 2 cái này vào
+} = useTheme();
   const { t } = useTranslation();      
   const { token: { borderRadiusLG } } = theme.useToken();
 
@@ -38,6 +44,7 @@ const DashboardLayout: React.FC = () => {
   } = useAdminFeedbacks();
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false); // Điều khiển ngăn kéo giao diện
   
   // --- STATE CHO MODAL CHI TIẾT ---
   // Lưu feedback đang được chọn để hiển thị
@@ -141,11 +148,11 @@ const DashboardLayout: React.FC = () => {
       ]
     },
     { key: '/tickets', icon: <QrcodeOutlined />, label: t('tickets_pricing'), onClick: () => navigate('/tickets') },
+    { key: '/customers', icon: <TeamOutlined />, label: t('Khách hàng'), onClick: () => navigate('/customers') },
     { key: '/promotions', icon: <GiftOutlined />, label: t('promotions'), onClick: () => navigate('/promotions') },
     { type: 'divider' },
     { key: '/settings', icon: <SettingOutlined />, label: t('settings_log'), onClick: () => navigate('/settings') },
-    { key: '/appearance', icon: <BgColorsOutlined />, label: t('appearance'), onClick: () => navigate('/appearance') },
-    { key: '/giftcodes', icon: <GiftOutlined />, label: 'Quản lý Giftcode', onClick: () => navigate('/giftcodes') },
+    { key: '/giftcodes', icon: <GiftOutlined />, label: t('Quản lý Giftcode'), onClick: () => navigate('/giftcodes') },
   ];
 
   return (
@@ -171,6 +178,13 @@ const DashboardLayout: React.FC = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 10, 
             display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 16 
         }}>
+
+          <Button 
+              type="text" 
+              shape="circle" 
+              icon={<BgColorsOutlined style={{ fontSize: 20 }} />} 
+              onClick={() => setIsAppearanceOpen(true)} // Mở ngăn kéo khi nhấn
+            />
           
           <Popover 
             content={notificationContent} 
@@ -198,6 +212,72 @@ const DashboardLayout: React.FC = () => {
             <Outlet />
           </div>
         </Content>
+<Drawer
+  title={<Space><BgColorsOutlined /> Tùy chỉnh Giao diện</Space>}
+  placement="right"
+  onClose={() => setIsAppearanceOpen(false)}
+  open={isAppearanceOpen}
+  width={380}
+>
+  <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 32 }}>
+    
+    {/* PHẦN 1: MÀU CHÍNH - Dàn trải linh hoạt */}
+    <section style={{ flex: 1 }}>
+      <Title level={5}>Màu Chính (Nút bấm, Highlight)</Title>
+      <Text type="secondary">Màu sắc hiển thị cho các nút thao tác và tiêu đề chính.</Text>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
+        {[
+          '#6C63FF', '#4834d4', '#1890ff', '#ff4d4f', 
+          '#52c41a', '#faad14', '#722ed1', '#eb2f96'
+        ].map(color => (
+          <div
+            key={color}
+            onClick={() => setPrimaryColor?.(color)}
+            style={{
+              width: 40, height: 40, borderRadius: '50%', background: color,
+              cursor: 'pointer', border: primaryColor === color ? '3px solid #ddd' : 'none',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)', transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          />
+        ))}
+        <ColorPicker value={primaryColor} onChange={(c) => setPrimaryColor?.(c.toHexString())} />
+      </div>
+    </section>
+
+    <Divider />
+
+    {/* PHẦN 2: MÀU SIDEBAR - Dàn trải linh hoạt */}
+    <section style={{ flex: 1 }}>
+      <Title level={5}>Màu Menu Trái (Sidebar)</Title>
+      <Text type="secondary">Tùy chỉnh màu nền cho thanh điều hướng bên trái.</Text>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
+        {[
+          '#195B99', '#111827', '#1a1a1a', '#2d3436', 
+          '#001529', '#2c3e50', '#4b4b4b', '#000000'
+        ].map(color => (
+          <div
+            key={color}
+            onClick={() => setSiderColor?.(color)}
+            style={{
+              width: 40, height: 40, borderRadius: 8, background: color,
+              cursor: 'pointer', border: siderColor === color ? '3px solid #1890ff' : '1px solid #d9d9d9',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)', transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          />
+        ))}
+      </div>
+    </section>
+
+    <div style={{ textAlign: 'center', paddingBottom: 20, opacity: 0.5 }}>
+      <Divider />
+      <Text style={{ fontSize: 12 }}>Thiết kế bởi Trí - HCMC Metro Management</Text>
+    </div>
+  </div>
+</Drawer>
 
         {/* --- MODAL CHI TIẾT FEEDBACK (MỚI) --- */}
         <Modal
