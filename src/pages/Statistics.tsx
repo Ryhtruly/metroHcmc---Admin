@@ -15,12 +15,7 @@ const { Title } = Typography;
 
 const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 // Dữ liệu giả lập cho loại vé (Vì chưa có API report theo loại vé)
-const PIE_DATA = [
-  { name: 'Vé Lượt', value: 400 },
-  { name: 'Vé Ngày', value: 300 },
-  { name: 'Vé Tháng', value: 150 },
-  { name: 'Vé HSSV', value: 100 },
-];
+
 
 const Statistics: React.FC = () => {
   const { loading, salesData, trafficData, pieData, kpi, setDateRange, refetch } = useStatistics();

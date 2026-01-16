@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import { 
   UserOutlined, SearchOutlined, ReloadOutlined, GiftOutlined, 
-  LockOutlined, UnlockOutlined, HistoryOutlined, PhoneOutlined, MailOutlined
+  LockOutlined, UnlockOutlined, HistoryOutlined, PhoneOutlined, MailOutlined, EyeOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useCustomerManager } from '../hooks/useCustomerManager';
@@ -14,10 +14,14 @@ const { Title, Text } = Typography;
 
 const CustomerManager: React.FC = () => {
   const { 
-    customers, loading, refresh, 
-    updateUserStatus, fetchRideHistory, fetchAvailableCodes,
-    sendGiftToUser 
-  } = useCustomerManager();
+  customers, loading, refresh, 
+  updateUserStatus, fetchAvailableCodes, sendGiftToUser,
+  // Các biến phục vụ Lịch sử mua vé
+  customerTickets, selectedTicket, isTicketDetailOpen,
+  fetchCustomerTickets, fetchTicketDetail, setIsTicketDetailOpen
+} = useCustomerManager();
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   
   const [searchText, setSearchText] = useState('');
   
@@ -68,10 +72,10 @@ const CustomerManager: React.FC = () => {
     }
   };
 
-  // 4. Xem lịch sử đi tàu
-  const handleShowHistory = async (user: any) => {
-    const data = await fetchRideHistory(user.user_id);
-    setHistoryModal({ open: true, user, data });
+  const handleShowHistory = (user: any) => {
+    setSelectedUser(user);
+    setHistoryModalVisible(true);
+    fetchCustomerTickets(user.user_id); // Gọi hàm lấy data từ Backend
   };
 
   const columns = [
@@ -119,7 +123,7 @@ const CustomerManager: React.FC = () => {
           <Tooltip title="Tặng quà & Phản hồi">
             <Button type="primary" shape="circle" icon={<GiftOutlined />} onClick={() => handleOpenPromo(record)} />
           </Tooltip>
-          <Tooltip title="Lịch sử đi tàu">
+          <Tooltip title="Lịch sử mua vé">
             <Button shape="circle" icon={<HistoryOutlined />} onClick={() => handleShowHistory(record)} />
           </Tooltip>
           <Divider type="vertical" />
@@ -225,22 +229,61 @@ const CustomerManager: React.FC = () => {
 
       {/* Modal 3: Lịch sử đi tàu */}
       <Modal
-        title={`Lịch sử đi tàu: ${historyModal.user?.full_name}`}
-        open={historyModal.open}
-        onCancel={() => setHistoryModal({ ...historyModal, open: false })}
-        width={700}
-        footer={null}
-      >
-        <Table
-          dataSource={historyModal.data}
-          size="small"
-          columns={[
-            { title: 'Thời gian', dataIndex: 'time', render: (t) => dayjs(t).format('HH:mm DD/MM/YYYY') },
-            { title: 'Ga', dataIndex: 'station_name' },
-            { title: 'Ghi chú', dataIndex: 'action_type' }
-          ]}
-        />
-      </Modal>
+  title={`Lịch sử mua vé: ${selectedUser?.full_name}`} // Dùng selectedUser
+  open={historyModalVisible} // Đổi từ historyModal.open thành historyModalVisible
+  onCancel={() => setHistoryModalVisible(false)} // Đổi hàm đóng Modal
+  width={800}
+  footer={null}
+>
+  <Table
+    dataSource={customerTickets} // Dữ liệu vé từ Hook
+    rowKey="ticket_id"
+    size="small"
+    columns={[
+      { title: 'Tên gói vé', dataIndex: 'product_name' },
+      { title: 'Giá', dataIndex: 'final_price', render: (p) => `${p.toLocaleString()}₫` },
+      { title: 'Ngày mua', dataIndex: 'created_at', render: (d) => dayjs(d).format('DD/MM/YYYY') },
+      { title: 'Trạng thái', dataIndex: 'status', render: (s) => <Tag color="blue">{s}</Tag> },
+      {
+        title: 'Thao tác',
+        render: (_, record) => (
+          <Button 
+            type="link" 
+            icon={<EyeOutlined />} 
+            onClick={() => fetchTicketDetail(record.ticket_id)} // Gọi hàm lấy chi tiết vé
+          >
+            Chi tiết
+          </Button>
+        )
+      }
+    ]}
+  />
+</Modal>
+
+{/* Modal 4: Chi tiết vé & QR Code */}
+<Modal
+  title="Chi tiết vé điện tử"
+  open={isTicketDetailOpen}
+  onCancel={() => setIsTicketDetailOpen(false)}
+  footer={null}
+  centered
+>
+  {selectedTicket && (
+    <div style={{ textAlign: 'center' }}>
+      <img 
+        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${selectedTicket.qr_data}`} 
+        alt="QR" 
+      />
+      <Title level={4} style={{ marginTop: 10 }}>{selectedTicket.ticket_code}</Title>
+      <Divider />
+      <Row style={{ textAlign: 'left' }}>
+         <Col span={12}><Text type="secondary">Ga đi:</Text><br/><Text strong>{selectedTicket.from_station_name || 'Tất cả ga'}</Text></Col>
+         <Col span={12}><Text type="secondary">Ga đến:</Text><br/><Text strong>{selectedTicket.to_station_name || 'Tất cả ga'}</Text></Col>
+         <Col span={24} style={{marginTop: 10}}><Text type="secondary">Hết hạn:</Text><br/><Text strong>{dayjs(selectedTicket.expiry_date).format('DD/MM/YYYY HH:mm')}</Text></Col>
+      </Row>
+    </div>
+  )}
+</Modal>
     </div>
   );
 };

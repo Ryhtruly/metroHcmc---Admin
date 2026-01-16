@@ -6,6 +6,12 @@ export const useCustomerManager = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // --- TRẠNG THÁI CHO LỊCH SỬ MUA VÉ ---
+  const [customerTickets, setCustomerTickets] = useState<any[]>([]); 
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);   
+  const [isTicketDetailOpen, setIsTicketDetailOpen] = useState(false); 
+
+  // 1. Hàm lấy danh sách khách hàng
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
@@ -18,7 +24,7 @@ export const useCustomerManager = () => {
     }
   }, []);
 
-  // 🔥 Hàm cập nhật trạng thái
+  // 2. Cập nhật trạng thái User
   const updateUserStatus = async (userId: string, status: boolean) => {
     try {
       await axiosClient.patch(`/admin/customers/${userId}/status`, { status });
@@ -29,43 +35,85 @@ export const useCustomerManager = () => {
     }
   };
 
-const fetchRideHistory = async (userId: string) => {
+  // 3. Lấy mã quà tặng khả dụng (GIỮ NGUYÊN)
+  const fetchAvailableCodes = async () => {
+    try {
+      const res: any = await axiosClient.get('/admin/giftcodes/available');
+      return res.data || res || []; 
+    } catch (e) {
+      return [];
+    }
+  };
+
+  // 4. Gửi quà tặng (GIỮ NGUYÊN)
+  const sendGiftToUser = async (userId: string, promoCode: string, title: string, content: string) => {
+    try {
+      const res: any = await axiosClient.post('/admin/customers/send-gift', { 
+        userId, promoCode, title, content 
+      });
+      return res;
+    } catch (e) {
+      return { success: false, message: 'Lỗi kết nối' };
+    }
+  };
+
+  // 5. Lấy lịch sử mua vé
+  const fetchCustomerTickets = async (userId: string) => {
   try {
-    const res: any = await axiosClient.get(`/admin/customers/${userId}/history`);
-    return res.data || res || [];
-  } catch (e) {
-    message.error('Không thể lấy lịch sử đi tàu');
-    return [];
+    setLoading(true);
+    const res: any = await axiosClient.get(`/tickets/admin/customer/${userId}`);
+    
+    // 🔥 SỬA LẠI ĐOẠN NÀY ĐỂ TRÁNH TRỐNG DATA
+    // axiosClient của anh đôi khi trả về res.data, đôi khi là res
+    const rawData = res.data || res; 
+    
+    if (rawData && rawData.tickets) {
+      setCustomerTickets(rawData.tickets); 
+      console.log("Đã nhận vé:", rawData.tickets); // Log ra để kiểm tra
+    } else {
+      setCustomerTickets([]);
+      console.log("Không có vé nào cho user này");
+    }
+  } catch (error) {
+    console.error("Lỗi API lấy vé:", error);
+    setCustomerTickets([]);
+  } finally {
+    setLoading(false);
   }
 };
 
-const fetchAvailableCodes = async () => {
-  try {
-    const res: any = await axiosClient.get('/admin/giftcodes/available');
-    return res.data || res || []; 
-  } catch (e) {
-    message.error('Không thể lấy danh sách mã');
-    return [];
-  }
-};
+  // 6. Lấy chi tiết vé (Có QR Code)
+  const fetchTicketDetail = async (ticketId: string) => {
+    try {
+      setLoading(true);
+      const res: any = await axiosClient.get(`/tickets/${ticketId}`);
+      if (res) {
+        setSelectedTicket(res);
+        setIsTicketDetailOpen(true);
+      }
+    } catch (error) {
+      message.error("Không thể lấy chi tiết vé");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const sendGiftToUser = async (userId: string, promoCode: string, title: string, content: string) => {
-  try {
-    const res: any = await axiosClient.post('/admin/customers/send-gift', { 
-      userId, promoCode, title, content 
-    });
-    return res.success || res.data?.success;
-  } catch (e) { return false; }
-};
-  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
-  return { 
-    customers, 
-    loading, 
-    refresh: fetchCustomers,
+  return {
+    customers,
+    loading,
+    customerTickets,
+    selectedTicket,
+    isTicketDetailOpen,
+    refresh: fetchCustomers, // Map để khớp với file UI
     updateUserStatus,
-    fetchRideHistory,
     fetchAvailableCodes,
-    sendGiftToUser
+    sendGiftToUser,
+    fetchCustomerTickets,
+    fetchTicketDetail,
+    setIsTicketDetailOpen
   };
 };
