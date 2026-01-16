@@ -40,7 +40,16 @@ const NotificationsTab = ({ data, onOpenModal }: any) => {
 // --- TAB 2: NHẬT KÝ HỆ THỐNG ---
 const AuditLogsTab = ({ data, dateRange, setDateRange, onFilter }: any) => {
   const columns = [
-    { title: 'Người thực hiện', dataIndex: 'actor_user', key: 'actor', render: (t: string) => <span style={{color: '#1890ff'}}>{t ? t.substring(0, 8) + '...' : 'System'}</span> },
+   {
+      title: 'Người thực hiện',
+      dataIndex: 'actor',
+      key: 'actor',
+      render: (actor: any) => {
+        if (!actor) return <Tag>System</Tag>;
+        return <b style={{ color: '#1890ff' }}>{actor.name}</b>;
+      },
+    }
+    ,
     { title: 'Hành động', dataIndex: 'action', key: 'action', render: (t: string) => <Tag color="purple">{t}</Tag> },
     { title: 'Đối tượng', dataIndex: 'object_type', key: 'target' },
     { title: 'ID Đối tượng', dataIndex: 'object_id', key: 'obj_id' },
