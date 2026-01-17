@@ -9,6 +9,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 
 // Quản lý
 import TicketManager from './pages/TicketManager';
+import TicketPurchase from './pages/TicketPurchase';
 import StationManager from './pages/StationManager';
 import LineManager from './pages/LineManager';
 import PromotionManager from './pages/PromotionManager';
@@ -34,7 +35,7 @@ function App() {
     <AntApp>
       <BrowserRouter>
         <Routes>
-          
+
           {/* 🔹 1. PUBLIC ROUTES (Không cần đăng nhập) */}
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -56,14 +57,15 @@ function App() {
             <Route path="lines" element={<LineManager />} />
             <Route path="stations" element={<StationManager />} />
             <Route path="tickets" element={<TicketManager />} />
+            <Route path="purchase" element={<TicketPurchase />} />
             <Route path="promotions" element={<PromotionManager />} />
             <Route path="giftcodes" element={<GiftcodeManager />} />
             <Route path="customers" element={<CustomerManager />} />
-            
+
             <Route path="statistics" element={<Statistics />} />
             <Route path="settings" element={<Settings />} />
             <Route path="appearance" element={<Appearance />} />
-            
+
           </Route>
 
           {/* 🔹 3. ROUTE KHÔNG TÌM THẤY (Mọi đường dẫn không khớp sẽ chuyển về Dashboard/Login) */}

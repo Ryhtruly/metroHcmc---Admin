@@ -1,7 +1,7 @@
-import axios, { 
-  type AxiosInstance, 
-  type InternalAxiosRequestConfig, 
-  type AxiosResponse 
+import axios, {
+  type AxiosInstance,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse
 } from 'axios';
 
 
